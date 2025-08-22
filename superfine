@@ -60,15 +60,16 @@ pd.set_option('display.max_colwidth', None)  # Prevents truncation of column con
 ##########################################################################
 
 # Define the progress bar function
-def print_progress_bar(iteration, total, prefix='', suffix='', length=50, fill='#'):
+def print_progress_bar(iteration, total, prefix='', suffix='', length=50, fill='#'): #Change fill to whatever symbol is preferred. 
     percent = f"{100 * (iteration / float(total)):.1f}"
     filled_length = int(length * iteration // total)
     bar = fill * filled_length + '-' * (length - filled_length)
     sys.stdout.write(f'\r{prefix} |{bar}| {percent}% {suffix}')
     sys.stdout.flush()
     if iteration == total:
-        print()  # New line on complete
+        print()
 
+# Define the cosine similarity function
 def cosine_similarity(a, b):
     norm_a = np.linalg.norm(a)
     norm_b = np.linalg.norm(b)
@@ -76,6 +77,7 @@ def cosine_similarity(a, b):
         return 0.0  # Handle zero-vector edge case
     return np.dot(a, b) / (norm_a * norm_b)
 
+# Define molecular orbital parser through REGEX
 def parse_uhf_mos(file_path):
     with open(file_path, 'r') as f:
         lines = f.readlines()
@@ -84,14 +86,15 @@ def parse_uhf_mos(file_path):
     mo_num = 0
     i = 0
     while i < len(lines):
-        if lines[i].strip().startswith("Sym="):
-            # Found start of MO block
+        if lines[i].strip().startswith("Sym="): #Molden file orbital blocks start with "Sym="
             energy_line = lines[i + 1]
             occup_line = lines[i + 3]
 
+            # Store header data for each orbital if required later
             energy = float(energy_line.split('=')[1].strip())
             occupation = float(occup_line.split('=')[1].strip())
 
+            # Begin reading through each block, omitting the header data
             coeffs = []
             j = i + 4
             while j < len(lines) and not lines[j].strip().startswith("Sym="):
@@ -106,6 +109,7 @@ def parse_uhf_mos(file_path):
             coeffs = np.array(coeffs)
             max_idx = np.argmax(np.abs(coeffs))
 
+            # Tabulated data
             results[mo_num] = {
                 "energy": energy,
                 "occupation": occupation,
@@ -120,51 +124,35 @@ def parse_uhf_mos(file_path):
 
     return results
 
-def parse_input_file(filename):
-    config = {}
-    with open(filename, 'r') as f:
-        for line in f:
-            line = line.strip()
-            if line.startswith('$'):
-                try:
-                    key, value = line[1:].split('=')
-                    config[key.strip()] = float(value.strip())
-                except ValueError:
-                    print(f"Skipping invalid line: {line}")
-    return config
-
 ##########################################################################
 ### USER INPUTS ##########################################################
 ##########################################################################
 
 dE = -0.065 # adiabatic energy difference between singlet and triplet state; sign dictates direction ie +ve means singlet is above triplet
 E_lambda_s = 0.0049 # Reorganisation energy in eV
-#E_lambda_t = 0.0004
 E_lambda_t = E_lambda_s
+Zeeman_Pulling_S = 0.0 
 
 # Triplet Splitting phenomena
 dE_upper_correction = 0.00 # Corrections are in eV
 dE_lower_correction = 4.33947058458868018102e-6
 E_lambda_upper_correction = 2.90124604798214617817e-6
 E_lambda_lower_correction = 0.0
-Zeeman_Pulling_S = 0.0
 
 T = 300  # temperature in K
+
+# Functions important for DoS
 broadening_s = 8.617e-5 * T * E_lambda_s
 broadening_t = 8.617e-5 * T * E_lambda_t
 broadening_s_upper = 8.617e-5 * T * (E_lambda_s + E_lambda_upper_correction)
 broadening_s_lower = 8.617e-5 * T * (E_lambda_s - E_lambda_lower_correction)
 broadening_t_upper = 8.617e-5 * T * (E_lambda_t + E_lambda_upper_correction)
 broadening_t_lower = 8.617e-5 * T * (E_lambda_t - E_lambda_lower_correction)
-#broadening = 6.6 * 1e-3 # Lorentzian lifetime broadening function. Approx. values below:
-###############          SYSTEM        | LIFETIME | FUNCTION
-############### Weakly coupled solvent | 1000 fs  | 6.6 meV
-###############   Moderate - Protein   |  100 fs  |  66 meV
-###############     Strong Coupling    |   10 fs  | 666 meV
 
+# Derivative spacing
 h = 0.05
 
-Spin_Quantum_Numbers_Isotope = { # Edit/add to table to include isotopes
+Spin_Quantum_Numbers_Isotope = { # Default values for nuclear spins; currently set to natural (dominant) isotopes 
     "H": 0.5,
     "C": 0.0, # C-13 is 1/2
     "N": 1.0,
@@ -227,7 +215,8 @@ parser.add_argument(
     help='Path to the [molden.input] for orbitals at the Franck-Condon point for the triplet state.'
 )
 
-args = parser.parse_args()
+# Set all parsers to variables for use in code
+args = parser.parse_args(
 Hyperfine_coupling_singlet_file_path = args.s
 Hyperfine_coupling_triplet_file_path = args.t
 PRINT = args.p
@@ -291,16 +280,17 @@ e_charge = eV_to_J     # Elementary charge in C
 HF_C_S = []
 HF_C_T = []
 
-try: # Formatting the singlet Hyperfine table...
+try: # Formatting the singlet Hyperfine table for code
     with open(Hyperfine_coupling_singlet_file_path, 'r') as file:
         lines = file.readlines()
 
     for line in lines:
-        parts = line.strip().split()  # Remove any leading/trailing whitespace and split by spaces
+        parts = line.strip().split() 
         element_name = re.sub(r'\d+', '', parts[0])
-        row = [element_name] + [float(x) for x in parts[1:]] # Construct a row by adding the constant 0.5 at the end
+        row = [element_name] + [float(x) for x in parts[1:]] 
         HF_C_S.append(row)
 
+    # Saves everything to a formatted DataFrame
     df_s = pd.DataFrame(HF_C_S, columns=["Species", "HF_C x", "HF_C y", "HF_C z"])
     df_s["Spin Quantum Number"] = df_s["Species"].map(Spin_Quantum_Numbers_Isotope)
     species_list = df_s["Species"].unique().tolist()
@@ -311,21 +301,23 @@ try: # Formatting the singlet Hyperfine table...
         print(df_s.to_string(index=False))  # Full print (entire table without indices)
         print()
 
+# Error printing if the file is not included correctly.
 except FileNotFoundError:
     print(f"Error: The file '{Hyperfine_coupling_singlet_file_path}' was not found. Please check the path and try again.")
 except Exception as e:
     print(f"An error occurred: {e}")
 
-try: # Formatting the triplet Hyperfine table...
+try: # Formatting the triplet Hyperfine table for code 
     with open(Hyperfine_coupling_triplet_file_path, 'r') as file:
         lines = file.readlines()
 
     for line in lines:
-        parts = line.strip().split()  # Remove any leading/trailing whitespace and split by spaces
+        parts = line.strip().split() 
         element_name = re.sub(r'\d+', '', parts[0])
-        row = [element_name] + [float(x) for x in parts[1:]] # Construct a row by adding the constant 0.5 at the end
+        row = [element_name] + [float(x) for x in parts[1:]] 
         HF_C_T.append(row)
 
+    # Saves everything to a formatted DataFrame
     df_t = pd.DataFrame(HF_C_T, columns=["Species", "HF_C x", "HF_C y", "HF_C z"])
     df_t["Spin Quantum Number"] = df_t["Species"].map(Spin_Quantum_Numbers_Isotope)
     species_list = df_t["Species"].unique().tolist()
@@ -336,11 +328,13 @@ try: # Formatting the triplet Hyperfine table...
         print(df_t.to_string(index=False))  # Full print (entire table without indices)
         print()
 
+# Error printing if the file is not included correctly.
 except FileNotFoundError:
     print(f"Error: The file '{Hyperfine_coupling_triplet_file_path}' was not found. Please check the path and try again.")
 except Exception as e:
     print(f"An error occurred: {e}")
 
+# Finds the number of directories that need to be studied for HT expansion
 if HT:
     subdirs = [name for name in os.listdir(str("HT/SINGLET"))
                if os.path.isdir(os.path.join(str("HT/SINGLET"), name))]
@@ -368,12 +362,12 @@ if HT:
 ### ANALYSIS OF ALL HYPERFINE COUPLING CONSTANTS #########################
 ##########################################################################
 
-# RMS coupling matrix element (approximate coupling assuming complete spin overlap)
+# RMS coupling matrix element
 RMS_Hyperfine_Coupling_singlet = 0
 RMS_Hyperfine_Coupling_triplet = 0
 
 for _, row in df_s.iterrows(): #Calculating the Hyperfine coupling for the singlet state
-    # Extracting the values from each row of the df_s
+    # Extracting the values from each row of the DataFrame
     atom = row['Species']
     A_x = row['HF_C x']
     A_y = row['HF_C y']
@@ -381,16 +375,16 @@ for _, row in df_s.iterrows(): #Calculating the Hyperfine coupling for the singl
     s = row['Spin Quantum Number']
 
     A_n = np.array([A_x, A_y, A_z])
-    nuclear_spin_norm = np.sqrt((s * (s + 1) * (2 * s + 1)) / 3)
+    nuclear_spin_norm = (s * (s + 1) * (2 * s + 1)) / 3
 
     # Calculate the RMS matrix element
-    HF_RMS = (A_n[0]**2 + A_n[1]**2 + A_n[2]**2) * nuclear_spin_norm**2
+    HF_RMS = (A_n[0]**2 + A_n[1]**2 + A_n[2]**2) * nuclear_spin_norm
 
     RMS_Hyperfine_Coupling_singlet += HF_RMS
 RMS_Hyperfine_Coupling_singlet = np.sqrt(RMS_Hyperfine_Coupling_singlet)
 
 for _, row in df_t.iterrows(): #Calculating the Hyperfine coupling for the triplet state
-    # Extracting the values from each row of the df_s
+    # Extracting the values from each row of the DataFrame
     atom = row['Species']
     A_x = row['HF_C x']
     A_y = row['HF_C y']
@@ -398,24 +392,26 @@ for _, row in df_t.iterrows(): #Calculating the Hyperfine coupling for the tripl
     s = row['Spin Quantum Number']
 
     A_n = np.array([A_x, A_y, A_z])
-    nuclear_spin_norm = np.sqrt((s * (s + 1) * (2 * s + 1)) / 3)
+    nuclear_spin_norm = (s * (s + 1) * (2 * s + 1)) / 3
 
     # Calculate the RMS matrix element
-    HF_RMS = (A_n[0]**2 + A_n[1]**2 + A_n[2]**2) * nuclear_spin_norm**2
+    HF_RMS = (A_n[0]**2 + A_n[1]**2 + A_n[2]**2) * nuclear_spin_norm
 
     RMS_Hyperfine_Coupling_triplet += HF_RMS
 RMS_Hyperfine_Coupling_triplet = np.sqrt(RMS_Hyperfine_Coupling_triplet)
 
+# If phase tracking is enabled, orbital coefficients are stored at the Franck-Condon point
 if PHASER:
     FC_S_results = parse_uhf_mos(Orbitals_singlet_file_path)
     print("Singlet phase has been stored...")
     FC_T_results = parse_uhf_mos(Orbitals_triplet_file_path)
     print("Triplet phase has been stored...")
-    all_mos = sorted(set(FC_S_results.keys()) & set(FC_T_results.keys())) # Determine which MOs to compare  - use intersection if you're unsure about consistency
-    FC_S_coeffs = np.array([FC_S_results[mo]["coefficient"] for mo in all_mos]) # Extract FC coefficients across singlet state orbitals
-    FC_T_coeffs = np.array([FC_T_results[mo]["coefficient"] for mo in all_mos]) # Extract FC coefficients across triplet state orbitals
+    all_mos = sorted(set(FC_S_results.keys()) & set(FC_T_results.keys())) 
+    FC_S_coeffs = np.array([FC_S_results[mo]["coefficient"] for mo in all_mos]) 
+    FC_T_coeffs = np.array([FC_T_results[mo]["coefficient"] for mo in all_mos]) 
     print()
 
+# Herzerg-Teller calculation of matrix elememt contribution. Phase tracking will be calculate concurrently with each mode if requested. 
 if HT:
     S2T_mode_coupling_positive = []
     S2T_mode_coupling_negative = []
@@ -429,10 +425,6 @@ if HT:
 
     print("Singlet analysis beginning...")
     SPIN = 'SINGLET'
-
-    # DEBUG REPLACEMENT: USE TO TEST SPECIFIC MODES
-    #TEST_MODE = 166
-    #for MODE in [TEST_MODE - 1]:
 
     for MODE in range(max_dir+1):
         print_progress_bar(MODE, max_dir, prefix='Progress in SINGLET manifold:  ', suffix='Complete', length=40)
@@ -451,9 +443,9 @@ if HT:
                 lines = file.readlines()
 
             for line in lines:
-                parts = line.strip().split()  # Remove any leading/trailing whitespace and split by spaces
+                parts = line.strip().split()  
                 element_name = re.sub(r'\d+', '', parts[0])
-                row = [element_name] + [float(x) for x in parts[1:]] # Construct a row by adding the constant 0.5 at the end
+                row = [element_name] + [float(x) for x in parts[1:]] 
                 HF_C_positive.append(row)
 
             df_positive = pd.DataFrame(HF_C_positive, columns=["Species", "HF_C x", "HF_C y", "HF_C z"])
@@ -470,9 +462,9 @@ if HT:
                 lines = file.readlines()
 
             for line in lines:
-                parts = line.strip().split()  # Remove any leading/trailing whitespace and split by spaces
+                parts = line.strip().split() 
                 element_name = re.sub(r'\d+', '', parts[0])
-                row = [element_name] + [float(x) for x in parts[1:]] # Construct a row by adding the constant 0.5 at the end
+                row = [element_name] + [float(x) for x in parts[1:]] 
                 HF_C_negative.append(row)
 
             df_negative = pd.DataFrame(HF_C_negative, columns=["Species", "HF_C x", "HF_C y", "HF_C z"])
@@ -496,10 +488,10 @@ if HT:
             s = row['Spin Quantum Number']
 
             A_n = np.array([A_x, A_y, A_z])
-            nuclear_spin_norm = np.sqrt((s * (s + 1) * (2 * s + 1)) / 3)
+            nuclear_spin_norm = (s * (s + 1) * (2 * s + 1)) / 3
 
             # Calculate the RMS matrix element
-            mode_coupling_positive += (A_n[0]**2 + A_n[1]**2 + A_n[2]**2) * nuclear_spin_norm**2
+            mode_coupling_positive += (A_n[0]**2 + A_n[1]**2 + A_n[2]**2) * nuclear_spin_norm
         mode_coupling_positive = np.sqrt(mode_coupling_positive)
         S2T_mode_coupling_positive.append(mode_coupling_positive)
 
@@ -511,10 +503,10 @@ if HT:
             s = row['Spin Quantum Number']
 
             A_n = np.array([A_x, A_y, A_z])
-            nuclear_spin_norm = np.sqrt((s * (s + 1) * (2 * s + 1)) / 3)
+            nuclear_spin_norm = (s * (s + 1) * (2 * s + 1)) / 3
 
             # Calculate the RMS matrix element
-            mode_coupling_negative += (A_n[0]**2 + A_n[1]**2 + A_n[2]**2) * nuclear_spin_norm**2
+            mode_coupling_negative += (A_n[0]**2 + A_n[1]**2 + A_n[2]**2) * nuclear_spin_norm
         mode_coupling_negative = np.sqrt(mode_coupling_negative)
         S2T_mode_coupling_negative.append(mode_coupling_negative)
 
@@ -526,8 +518,8 @@ if HT:
                 coeffs_p = np.array([results_p[mo]["coefficient"] if mo in results_p else 0.0 for mo in all_mos])
                 cos_sim_m = cosine_similarity(coeffs_m, FC_S_coeffs)
                 cos_sim_p = cosine_similarity(coeffs_p, FC_S_coeffs)
-                flip_m = cos_sim_m < 0 # Inversion flags (flip sign of dA/dQj if True)
-                flip_p = cos_sim_p < 0 # Inversion flags (flip sign of dA/dQj if True)
+                flip_m = cos_sim_m < 0 # Inversion flags (flip sign of dA/dQj- if True)
+                flip_p = cos_sim_p < 0 # Inversion flags (flip sign of dA/dQj+ if True)
                 summary_data.append({
                     "state": "singlet",
                     "i": MODE,
@@ -540,9 +532,7 @@ if HT:
                 print(f"\nError at index {i}: {e}")
             mode_coupling_positive = -mode_coupling_positive if flip_p else mode_coupling_positive
             mode_coupling_negative = -mode_coupling_negative if flip_m else mode_coupling_negative
-            #mode_coupling_positive *= -1 if (flip_p) else 1
-            #mode_coupling_negative *= -1 if (flip_m) else 1
-
+            
         dV = (mode_coupling_positive - mode_coupling_negative) / (2 * h)
         if PHASER:
             if flip_p != flip_m:
@@ -552,10 +542,6 @@ if HT:
     print()
     print("Triplet analysis beginning...")
     SPIN = 'TRIPLET'
-
-    # DEBUG REPLACEMENT: USE TO TEST SPECIFIC MODES
-    #TEST_MODE = 24
-    #for MODE in [TEST_MODE - 1]:
 
     for MODE in range(max_dir+1):
         print_progress_bar(MODE, max_dir, prefix='Progress in TRIPLET manifold:  ', suffix='Complete', length=40)
@@ -574,9 +560,9 @@ if HT:
                 lines = file.readlines()
 
             for line in lines:
-                parts = line.strip().split()  # Remove any leading/trailing whitespace and split by spaces
+                parts = line.strip().split() 
                 element_name = re.sub(r'\d+', '', parts[0])
-                row = [element_name] + [float(x) for x in parts[1:]] # Construct a row by adding the constant 0.5 at the end
+                row = [element_name] + [float(x) for x in parts[1:]] 
                 HF_C_positive.append(row)
 
             df_positive = pd.DataFrame(HF_C_positive, columns=["Species", "HF_C x", "HF_C y", "HF_C z"])
@@ -593,9 +579,9 @@ if HT:
                 lines = file.readlines()
 
             for line in lines:
-                parts = line.strip().split()  # Remove any leading/trailing whitespace and split by spaces
+                parts = line.strip().split() 
                 element_name = re.sub(r'\d+', '', parts[0])
-                row = [element_name] + [float(x) for x in parts[1:]] # Construct a row by adding the constant 0.5 at the end
+                row = [element_name] + [float(x) for x in parts[1:]] 
                 HF_C_negative.append(row)
 
             df_negative = pd.DataFrame(HF_C_negative, columns=["Species", "HF_C x", "HF_C y", "HF_C z"])
@@ -619,10 +605,10 @@ if HT:
             s = row['Spin Quantum Number']
 
             A_n = np.array([A_x, A_y, A_z])
-            nuclear_spin_norm = np.sqrt((s * (s + 1) * (2 * s + 1)) / 3)
+            nuclear_spin_norm = (s * (s + 1) * (2 * s + 1)) / 3
 
             # Calculate the RMS matrix element
-            mode_coupling_positive += (A_n[0]**2 + A_n[1]**2 + A_n[2]**2) * nuclear_spin_norm**2
+            mode_coupling_positive += (A_n[0]**2 + A_n[1]**2 + A_n[2]**2) * nuclear_spin_norm
         mode_coupling_positive = np.sqrt(mode_coupling_positive)
         T2S_mode_coupling_positive.append(mode_coupling_positive)
 
@@ -634,10 +620,10 @@ if HT:
             s = row['Spin Quantum Number']
 
             A_n = np.array([A_x, A_y, A_z])
-            nuclear_spin_norm = np.sqrt((s * (s + 1) * (2 * s + 1)) / 3)
+            nuclear_spin_norm = (s * (s + 1) * (2 * s + 1)) / 3
 
             # Calculate the RMS matrix element
-            mode_coupling_negative += (A_n[0]**2 + A_n[1]**2 + A_n[2]**2) * nuclear_spin_norm**2
+            mode_coupling_negative += (A_n[0]**2 + A_n[1]**2 + A_n[2]**2) * nuclear_spin_norm
         mode_coupling_negative = np.sqrt(mode_coupling_negative)
         T2S_mode_coupling_negative.append(mode_coupling_negative)
 
@@ -649,8 +635,8 @@ if HT:
                 coeffs_p = np.array([results_p[mo]["coefficient"] if mo in results_p else 0.0 for mo in all_mos])
                 cos_sim_m = cosine_similarity(coeffs_m, FC_T_coeffs)
                 cos_sim_p = cosine_similarity(coeffs_p, FC_T_coeffs)
-                flip_m = cos_sim_m < 0 # Inversion flags (flip sign of dA/dQj if True)
-                flip_p = cos_sim_p < 0 # Inversion flags (flip sign of dA/dQj if True)
+                flip_m = cos_sim_m < 0 # Inversion flags (flip sign of dA/dQj- if True)
+                flip_p = cos_sim_p < 0 # Inversion flags (flip sign of dA/dQj+ if True)
                 summary_data.append({
                     "state": "triplet",
                     "i": MODE,
@@ -663,8 +649,6 @@ if HT:
                 print(f"\nError at index {i}: {e}")
             mode_coupling_positive = -mode_coupling_positive if flip_p else mode_coupling_positive
             mode_coupling_negative = -mode_coupling_negative if flip_m else mode_coupling_negative
-            #mode_coupling_positive *= -1 if (flip_p) else 1
-            #mode_coupling_negative *= -1 if (flip_m) else 1
 
         dV = (mode_coupling_positive - mode_coupling_negative) / (2 * h)
         if PHASER:
@@ -677,12 +661,6 @@ if HT:
 
     print()
     df_dV = pd.DataFrame(FULL, columns=["MODE", "dV/dQ (S)", "dV/dQ (T)"])
-    # Convert to cm-1
-    #df_dV["dV/dQ (S)"] /= (29979.2458)
-    #df_dV["dV/dQ (T)"] /= (29979.2458)
-    # Convert to eV
-    #f_dV["dV/dQ (S)"] /= (29979.2458 * 8065.5)
-    #f_dV["dV/dQ (T)"] /= (29979.2458 * 8065.5)
 
     # Reading in the Q values
     with open(args.qs, "r") as f:
@@ -725,6 +703,7 @@ if HT:
     df_dV["HT_S"] = df_dV["S2T Q"] * df_dV["dV/dQ (S)"]
     df_dV["HT_T"] = df_dV["T2S Q"] * df_dV["dV/dQ (T)"]
 
+    # Redefine the mode couplings in terms of their phase in the DataFrame (data only changes if phase tracking is enabled)
     df_dV["S+"] = S2T_mode_coupling_positive
     df_dV["S-"] = S2T_mode_coupling_negative
     df_dV["T+"] = T2S_mode_coupling_positive
@@ -765,7 +744,6 @@ if PHASER:
         'Mode', 'Singlet -ve phase', 'Singlet +ve phase', 'Singlet Cos Sim -ve', 'Singlet Cos Sim +ve',
         'Triplet -ve phase', 'Triplet +ve phase', 'Triplet Cos Sim -ve', 'Triplet Cos Sim +ve'
     ]
-    # Optional: print original summary if verbose mode is on
     if PRINT == 2:
         print(combined.to_string(index=False))
 
@@ -828,7 +806,7 @@ dE_T2S_upper = -dE_S2T_upper
 dE_T2S_middle = -dE_S2T_middle
 dE_T2S_lower = -dE_S2T_lower
 
-# Energy Densities
+# Energy Densities (E - \lambda)
 ENERGY_DENSITY_S2T_upper = dE_S2T_upper - E_lambda_s + E_lambda_upper_correction
 ENERGY_DENSITY_S2T_middle = dE_S2T_middle - E_lambda_s
 ENERGY_DENSITY_S2T_lower = dE_S2T_lower - E_lambda_s - E_lambda_lower_correction
@@ -836,6 +814,7 @@ ENERGY_DENSITY_T2S_upper = dE_T2S_upper - E_lambda_t + E_lambda_upper_correction
 ENERGY_DENSITY_T2S_middle = dE_T2S_middle - E_lambda_t
 ENERGY_DENSITY_T2S_lower = dE_T2S_lower - E_lambda_t - E_lambda_lower_correction
 
+#Gaussian DoS
 FCWD_G_S2T_upper = np.sqrt(1 / (4 * np.pi * (E_lambda_s + dE_upper_correction) * k_B * T) ) * np.exp(-(ENERGY_DENSITY_S2T_upper**2) / (4 * (E_lambda_s + dE_upper_correction) * k_B * T))
 FCWD_G_S2T_middle = np.sqrt(1 / (4 * np.pi * E_lambda_s * k_B * T) ) * np.exp(-(ENERGY_DENSITY_S2T_middle**2) / (4 * E_lambda_s * k_B * T))
 FCWD_G_S2T_lower = np.sqrt(1 / (4 * np.pi * (E_lambda_t - dE_lower_correction) * k_B * T) ) * np.exp(-(ENERGY_DENSITY_S2T_lower**2) / (4 * (E_lambda_s - dE_lower_correction) * k_B * T))
@@ -843,6 +822,7 @@ FCWD_G_T2S_upper = np.sqrt(1 / (4 * np.pi * (E_lambda_t + dE_upper_correction) *
 FCWD_G_T2S_middle = np.sqrt(1 / (4 * np.pi * E_lambda_t * k_B * T) ) * np.exp(-(ENERGY_DENSITY_T2S_middle**2) / (4 * E_lambda_t * k_B * T))
 FCWD_G_T2S_lower = np.sqrt(1 / (4 * np.pi * (E_lambda_t - dE_lower_correction) * k_B * T) ) * np.exp(-(ENERGY_DENSITY_T2S_lower**2) / (4 * (E_lambda_t - dE_lower_correction) * k_B * T))
 
+# Lorentzian DoS
 FCWD_L_S2T_upper = (1 / np.pi) * (broadening_s_upper / (ENERGY_DENSITY_S2T_upper**2 + broadening_s_upper**2))
 FCWD_L_S2T_middle = (1 / np.pi) * (broadening_s / (ENERGY_DENSITY_S2T_middle**2 + broadening_s**2))
 FCWD_L_S2T_lower = (1 / np.pi) * (broadening_s_lower / (ENERGY_DENSITY_S2T_lower**2 + broadening_s_lower**2))
@@ -850,6 +830,7 @@ FCWD_L_T2S_upper = (1 / np.pi) * (broadening_t_upper / (ENERGY_DENSITY_T2S_upper
 FCWD_L_T2S_middle = (1 / np.pi) * (broadening_t / (ENERGY_DENSITY_T2S_middle**2 + broadening_t**2))
 FCWD_L_T2S_lower = (1 / np.pi) * (broadening_t_lower / (ENERGY_DENSITY_T2S_lower**2 + broadening_t_lower**2))
 
+# Voigt DoS (G x V)
 FCWD_V_S2T_upper = FCWD_G_S2T_upper * FCWD_L_S2T_upper
 FCWD_V_S2T_middle = FCWD_G_S2T_middle * FCWD_L_S2T_middle
 FCWD_V_S2T_lower = FCWD_G_S2T_lower * FCWD_L_S2T_lower
@@ -900,124 +881,164 @@ if PRINT >= 1:
 ### HYPERFINE-MEDIATED INTERSYSTEM CROSSING ##############################
 ##########################################################################
 
+# Thermal functions due to sublevel splitting
 ThermalCorrection1_2 = np.exp(-(dE_lower_correction) / (k_B * T))
 ThermalCorrection1_3 = np.exp(-(dE_lower_correction + dE_upper_correction) / (k_B * T))
 
-if dE > 0:
+if dE > 0: # Damps T --> S rates due to uphill transitions
+    # Rates due to Gaussian broadening
     rate_HF_G_S2T_upper = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_G_S2T_upper
     rate_HF_G_S2T_middle = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_G_S2T_middle
     rate_HF_G_S2T_lower = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_G_S2T_lower
+    # Sublevel averaging w/ thermal corrections
     rate_HF_G_S2T = (rate_HF_G_S2T_upper + (rate_HF_G_S2T_middle*ThermalCorrection1_2) + (rate_HF_G_S2T_lower*ThermalCorrection1_3)) / (1 + ThermalCorrection1_2 + ThermalCorrection1_3)
     rate_HF_G_T2S_upper = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_G_T2S_upper * np.exp((-1 * dE_T2S_upper) / (k_B * T))
     rate_HF_G_T2S_middle = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_G_T2S_middle * np.exp((-1 * dE_T2S_middle) / (k_B * T))
     rate_HF_G_T2S_lower = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_G_T2S_lower * np.exp((-1 * dE_T2S_lower) / (k_B * T))
+    # Sublevel averaging w/ thermal corrections
     rate_HF_G_T2S = (rate_HF_G_T2S_upper + (rate_HF_G_T2S_middle*ThermalCorrection1_2) + (rate_HF_G_T2S_lower*ThermalCorrection1_3)) / (1 + ThermalCorrection1_2 + ThermalCorrection1_3)
 
+    # Rates due to Lorentzian broadening
     rate_HF_L_S2T_upper = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_L_S2T_upper
     rate_HF_L_S2T_middle = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_L_S2T_middle
     rate_HF_L_S2T_lower = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_L_S2T_lower
+    # Sublevel averaging w/ thermal corrections
     rate_HF_L_S2T = (rate_HF_L_S2T_upper + (rate_HF_L_S2T_middle*ThermalCorrection1_2) + (rate_HF_L_S2T_lower*ThermalCorrection1_2)) / (1+ThermalCorrection1_2+ThermalCorrection1_3)
     rate_HF_L_T2S_upper = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_L_T2S_upper * np.exp((-1 * dE_T2S_upper) / (k_B * T))
     rate_HF_L_T2S_middle = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_L_T2S_middle  * np.exp((-1 * dE_T2S_middle) / (k_B * T))
     rate_HF_L_T2S_lower = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_L_T2S_lower * np.exp((-1 * dE_T2S_lower) / (k_B * T))
+    # Sublevel averaging w/ thermal corrections
     rate_HF_L_T2S = (rate_HF_L_T2S_upper + (rate_HF_L_T2S_middle*ThermalCorrection1_2) + (rate_HF_L_T2S_lower*ThermalCorrection1_2)) / (1+ThermalCorrection1_2+ThermalCorrection1_3)
 
+    # Rates due to Voigt broadening
     rate_HF_V_S2T_upper = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_V_S2T_upper
     rate_HF_V_S2T_middle = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_V_S2T_middle
     rate_HF_V_S2T_lower = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_V_S2T_lower
+    # Sublevel averaging w/ thermal corrections
     rate_HF_V_S2T = (rate_HF_V_S2T_upper + (rate_HF_V_S2T_middle*ThermalCorrection1_2) + (rate_HF_V_S2T_lower*ThermalCorrection1_3)) / (1+ThermalCorrection1_2+ThermalCorrection1_3)
     rate_HF_V_T2S_upper = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_V_T2S_upper * np.exp((-1 * dE_T2S_upper) / (k_B * T))
     rate_HF_V_T2S_middle = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_V_T2S_middle * np.exp((-1 * dE_T2S_middle) / (k_B * T))
     rate_HF_V_T2S_lower = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_V_T2S_lower * np.exp((-1 * dE_T2S_lower) / (k_B * T))
+    # Sublevel averaging w/ thermal corrections
     rate_HF_V_T2S = (rate_HF_V_T2S_upper + (rate_HF_V_T2S_middle*ThermalCorrection1_2) + (rate_HF_V_T2S_lower*ThermalCorrection1_3)) / (1+ThermalCorrection1_2+ThermalCorrection1_3)
-else:
+else: # Damps S --> T rates due to uphill transitions
+    # Rates due to Gaussian broadening
     rate_HF_G_S2T_upper = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_G_S2T_upper * np.exp((-1 * dE_S2T_upper) / (k_B * T))
     rate_HF_G_S2T_middle = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_G_S2T_middle * np.exp((-1 * dE_S2T_middle) / (k_B * T))
     rate_HF_G_S2T_lower = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_G_S2T_lower * np.exp((-1 * dE_S2T_lower) / (k_B * T))
+    # Sublevel averaging w/ thermal corrections
     rate_HF_G_S2T = (rate_HF_G_S2T_upper + (rate_HF_G_S2T_middle*ThermalCorrection1_2) + (rate_HF_G_S2T_lower*ThermalCorrection1_3)) / (1 + ThermalCorrection1_2 + ThermalCorrection1_3)
     rate_HF_G_T2S_upper = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_G_T2S_upper
     rate_HF_G_T2S_middle = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_G_T2S_middle
     rate_HF_G_T2S_lower = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_G_T2S_lower
+    # Sublevel averaging w/ thermal corrections
     rate_HF_G_T2S = (rate_HF_G_T2S_upper + (rate_HF_G_T2S_middle*ThermalCorrection1_2) + (rate_HF_G_T2S_lower*ThermalCorrection1_3)) / (1 + ThermalCorrection1_2 + ThermalCorrection1_3)
 
+    # Rates due to Lorentzian broadening
     rate_HF_L_S2T_upper = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_L_S2T_upper * np.exp((-1 * dE_S2T_upper) / (k_B * T))
     rate_HF_L_S2T_middle = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_L_S2T_middle * np.exp((-1 * dE_S2T_middle) / (k_B * T))
     rate_HF_L_S2T_lower = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_L_S2T_lower * np.exp((-1 * dE_S2T_lower) / (k_B * T))
+    # Sublevel averaging w/ thermal corrections
     rate_HF_L_S2T = (rate_HF_L_S2T_upper + (rate_HF_L_S2T_middle*ThermalCorrection1_2) + (rate_HF_L_S2T_lower*ThermalCorrection1_2)) / (1+ThermalCorrection1_2+ThermalCorrection1_3)
     rate_HF_L_T2S_upper = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_L_T2S_upper
     rate_HF_L_T2S_middle = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_L_T2S_middle
     rate_HF_L_T2S_lower = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_L_T2S_lower
+    # Sublevel averaging w/ thermal corrections
     rate_HF_L_T2S = (rate_HF_L_T2S_upper + (rate_HF_L_T2S_middle*ThermalCorrection1_2) + (rate_HF_L_T2S_lower*ThermalCorrection1_2)) / (1+ThermalCorrection1_2+ThermalCorrection1_3)
 
+    # Rates due to Voigt broadening
     rate_HF_V_S2T_upper = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_V_S2T_upper * np.exp((-1 * dE_S2T_upper) / (k_B * T))
     rate_HF_V_S2T_middle = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_V_S2T_middle * np.exp((-1 * dE_S2T_middle) / (k_B * T))
     rate_HF_V_S2T_lower = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_V_S2T_lower * np.exp((-1 * dE_S2T_lower) / (k_B * T))
+    # Sublevel averaging w/ thermal corrections
     rate_HF_V_S2T = (rate_HF_V_S2T_upper + (rate_HF_V_S2T_middle*ThermalCorrection1_2) + (rate_HF_V_S2T_lower*ThermalCorrection1_3)) / (1+ThermalCorrection1_2+ThermalCorrection1_3)
     rate_HF_V_T2S_upper = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_V_T2S_upper
     rate_HF_V_T2S_middle = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_V_T2S_middle
     rate_HF_V_T2S_lower = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_V_T2S_lower
+    # Sublevel averaging w/ thermal corrections
     rate_HF_V_T2S = (rate_HF_V_T2S_upper + (rate_HF_V_T2S_middle*ThermalCorrection1_2) + (rate_HF_V_T2S_lower*ThermalCorrection1_3)) / (1+ThermalCorrection1_2+ThermalCorrection1_3)
 
+# Rates are recalculated if Herzberg-Teller contributions are requested
 if HT:
+    # Complete matrix element |<f|H1 + H2|i>|^2 = H1^2 + H2^2 + 2H1H2
     HT_COUPLING_SQUARED_SINGLET = RMS_Hyperfine_Coupling_singlet**2 + HT_pure_singlet_contribution**2 + (2 * RMS_Hyperfine_Coupling_singlet * HT_pure_singlet_contribution)
     HT_COUPLING_SQUARED_TRIPLET = RMS_Hyperfine_Coupling_triplet**2 + HT_pure_triplet_contribution**2 + (2 * RMS_Hyperfine_Coupling_triplet * HT_pure_triplet_contribution)
 
-    if dE > 0:
+    if dE > 0: # Damps T --> S rates due to uphill transitions
+        # Rates due to Gaussian broadening
         HTrate_HF_G_S2T_upper = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_G_S2T_upper
         HTrate_HF_G_S2T_middle = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_G_S2T_middle
         HTrate_HF_G_S2T_lower = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_G_S2T_lower
+        # Sublevel averaging w/ thermal corrections
         HTrate_HF_G_S2T = (HTrate_HF_G_S2T_upper + (HTrate_HF_G_S2T_middle*ThermalCorrection1_2) + (HTrate_HF_G_S2T_lower*ThermalCorrection1_3)) / (1+ThermalCorrection1_2+ThermalCorrection1_3)
         HTrate_HF_G_T2S_upper = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_G_T2S_upper * np.exp((-1 * dE_T2S_upper) / (k_B * T))
         HTrate_HF_G_T2S_middle = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_G_T2S_middle * np.exp((-1 * dE_T2S_middle) / (k_B * T))
         HTrate_HF_G_T2S_lower = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_G_T2S_lower * np.exp((-1 * dE_T2S_lower) / (k_B * T))
+        # Sublevel averaging w/ thermal corrections
         HTrate_HF_G_T2S = (HTrate_HF_G_T2S_upper + (HTrate_HF_G_T2S_middle*ThermalCorrection1_2) + (HTrate_HF_G_T2S_lower*ThermalCorrection1_3)) / (1+ThermalCorrection1_2+ThermalCorrection1_3)
 
+        # Rates due to Lorentzian broadening
         HTrate_HF_L_S2T_upper = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_L_S2T_upper
         HTrate_HF_L_S2T_middle = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_L_S2T_middle
         HTrate_HF_L_S2T_lower = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_L_S2T_lower
+        # Sublevel averaging w/ thermal corrections
         HTrate_HF_L_S2T = (HTrate_HF_L_S2T_upper + (HTrate_HF_L_S2T_middle*ThermalCorrection1_2) + (HTrate_HF_L_S2T_lower*ThermalCorrection1_3)) / (1+ThermalCorrection1_2+ThermalCorrection1_3)
         HTrate_HF_L_T2S_upper = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_L_T2S_upper * np.exp((-1 * dE_T2S_upper) / (k_B * T))
         HTrate_HF_L_T2S_middle = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_L_T2S_middle * np.exp((-1 * dE_T2S_middle) / (k_B * T))
         HTrate_HF_L_T2S_lower = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_L_T2S_lower * np.exp((-1 * dE_T2S_lower) / (k_B * T))
+        # Sublevel averaging w/ thermal corrections
         HTrate_HF_L_T2S = (HTrate_HF_L_T2S_upper + (HTrate_HF_L_T2S_middle*ThermalCorrection1_2) + (HTrate_HF_L_T2S_lower*ThermalCorrection1_3)) / (1+ThermalCorrection1_2+ThermalCorrection1_3)
 
+        # Rates due to Voigt broadening
         HTrate_HF_V_S2T_upper = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_V_S2T_upper
         HTrate_HF_V_S2T_middle = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_V_S2T_middle
         HTrate_HF_V_S2T_lower = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_V_S2T_lower
+        # Sublevel averaging w/ thermal corrections
         HTrate_HF_V_S2T = (HTrate_HF_V_S2T_upper + (HTrate_HF_V_S2T_middle*ThermalCorrection1_2) + (HTrate_HF_V_S2T_lower*ThermalCorrection1_3)) / (1+ThermalCorrection1_2+ThermalCorrection1_3)
         HTrate_HF_V_T2S_upper = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_V_T2S_upper * np.exp((-1 * dE_T2S_upper) / (k_B * T))
         HTrate_HF_V_T2S_middle = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_V_T2S_middle * np.exp((-1 * dE_T2S_middle) / (k_B * T))
         HTrate_HF_V_T2S_lower = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_V_T2S_lower * np.exp((-1 * dE_T2S_lower) / (k_B * T))
+        # Sublevel averaging w/ thermal corrections
         HTrate_HF_V_T2S = (HTrate_HF_V_T2S_upper + (HTrate_HF_V_T2S_middle*ThermalCorrection1_2) + (HTrate_HF_V_T2S_lower*ThermalCorrection1_3)) / (1+ThermalCorrection1_2+ThermalCorrection1_3)
 
-    else:
+    else: # Damps S --> T rates due to uphill transitions
+        # Rates due to Gaussian broadening
         HTrate_HF_G_S2T_upper = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_G_S2T_upper * np.exp((-1 * dE_S2T_upper) / (k_B * T))
         HTrate_HF_G_S2T_middle = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_G_S2T_middle * np.exp((-1 * dE_S2T_middle) / (k_B * T))
         HTrate_HF_G_S2T_lower = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_G_S2T_lower * np.exp((-1 * dE_S2T_lower) / (k_B * T))
+        # Sublevel averaging w/ thermal corrections
         HTrate_HF_G_S2T = (HTrate_HF_G_S2T_upper + (HTrate_HF_G_S2T_middle*ThermalCorrection1_2) + (HTrate_HF_G_S2T_lower*ThermalCorrection1_3)) / (1+ThermalCorrection1_2+ThermalCorrection1_3)
         HTrate_HF_G_T2S_upper = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_G_T2S_upper
         HTrate_HF_G_T2S_middle = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_G_T2S_middle
         HTrate_HF_G_T2S_lower = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_G_T2S_lower
+        # Sublevel averaging w/ thermal corrections
         HTrate_HF_G_T2S = (HTrate_HF_G_T2S_upper + (HTrate_HF_G_T2S_middle*ThermalCorrection1_2) + (HTrate_HF_G_T2S_lower*ThermalCorrection1_3)) / (1+ThermalCorrection1_2+ThermalCorrection1_3)
 
+        # Rates due to Lorentzian broadening
         HTrate_HF_L_S2T_upper = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_L_S2T_upper * np.exp((-1 * dE_S2T_upper) / (k_B * T))
         HTrate_HF_L_S2T_middle = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_L_S2T_middle * np.exp((-1 * dE_S2T_middle) / (k_B * T))
         HTrate_HF_L_S2T_lower = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_L_S2T_lower * np.exp((-1 * dE_S2T_lower) / (k_B * T))
+        # Sublevel averaging w/ thermal corrections
         HTrate_HF_L_S2T = (HTrate_HF_L_S2T_upper + (HTrate_HF_L_S2T_middle*ThermalCorrection1_2) + (HTrate_HF_L_S2T_lower*ThermalCorrection1_3)) / (1+ThermalCorrection1_2+ThermalCorrection1_3)
         HTrate_HF_L_T2S_upper = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_L_T2S_upper
         HTrate_HF_L_T2S_middle = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_L_T2S_middle
         HTrate_HF_L_T2S_lower = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_L_T2S_lower
+        # Sublevel averaging w/ thermal corrections
         HTrate_HF_L_T2S = (HTrate_HF_L_T2S_upper + (HTrate_HF_L_T2S_middle*ThermalCorrection1_2) + (HTrate_HF_L_T2S_lower*ThermalCorrection1_3)) / (1+ThermalCorrection1_2+ThermalCorrection1_3)
 
+        # Rates due to Voigt broadening
         HTrate_HF_V_S2T_upper = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_V_S2T_upper * np.exp((-1 * dE_S2T_upper) / (k_B * T))
         HTrate_HF_V_S2T_middle = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_V_S2T_middle * np.exp((-1 * dE_S2T_middle) / (k_B * T))
         HTrate_HF_V_S2T_lower = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_V_S2T_lower * np.exp((-1 * dE_S2T_lower) / (k_B * T))
+        # Sublevel averaging w/ thermal corrections
         HTrate_HF_V_S2T = (HTrate_HF_V_S2T_upper + (HTrate_HF_V_S2T_middle*ThermalCorrection1_2) + (HTrate_HF_V_S2T_lower*ThermalCorrection1_3)) / (1+ThermalCorrection1_2+ThermalCorrection1_3)
         HTrate_HF_V_T2S_upper = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_V_T2S_upper
         HTrate_HF_V_T2S_middle = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_V_T2S_middle
         HTrate_HF_V_T2S_lower = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_V_T2S_lower
+        # Sublevel averaging w/ thermal corrections
         HTrate_HF_V_T2S = (HTrate_HF_V_T2S_upper + (HTrate_HF_V_T2S_middle*ThermalCorrection1_2) + (HTrate_HF_V_T2S_lower*ThermalCorrection1_3)) / (1+ThermalCorrection1_2+ThermalCorrection1_3)
 
+# Printing final results
 print()
 print("*" * 64)
 print("*" * 13 + "           RATE CONSTANTS             " + "*" * 13)
