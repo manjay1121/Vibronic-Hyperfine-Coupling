@@ -1,0 +1,22 @@
+This program [HR.f90] written by my dear colleage Dr. Zifei Chen, takes the output from 
+the ORCA software package and calculates the Huang-Rhys factors based on the provided
+files. All of the required data can be found in the *.hess file outputs, but this data 
+needs to be exported into files as per the requirements below.  
+
+There are a small handful of files required to execuete the program:
+1) Initial state geometry [GS_geom.xyz].
+2) Final state geometry [ES_geom.xyz].
+3) Initial state frequency eigenvectors [GS_eigenvector.dat].
+4) Initial state frequency eigenvalues [freq.dat].
+Please note that for the eigenfrequencies and eigenvalues to include the the
+translational and rotational modes ie. first 6 null modes. 
+
+Next, the source code needs to be edited. The third line in specific. Alter the system
+size to that of yours. 
+
+Finally, the source code should be compiled:
+##COMILE COMMAND##
+ifort -qmkl HR.f90
+##################
+
+You can now run the code [a.out]. 

@@ -1,0 +1,19 @@
+#!/bin/bash
+
+echo "This code will clean up all non-essential files for hyperfine HT calculations. "
+echo "Please only run this in your working directory. "
+echo "In case this is a mistake, I will wait 5 seconds, so you have time to cancel..."
+sleep 5s
+echo "Ok, lets begin..."
+
+find . -name "orca.bibtex" -delete
+find . -name "orca.cpcm" -delete
+find . -name "orca.cpcm_corr" -delete
+find . -name "orca.densities" -delete
+find . -name "orca.densitiesinfo" -delete
+find . -name "orca.gbw" -delete
+find . -name "orca.property.txt" -delete
+
+echo "All done. Just checking the new size of the director..."
+du -sh 
+

@@ -1,0 +1,37 @@
+#!/bin/bash
+
+module load python3
+module load orca
+
+initial_line=$(grep -n "VIBRATIONAL FREQUENCIES" *out | cut -d: -f1)
+final_line=$(grep -n "NORMAL MODES" *out | cut -d: -f1)
+
+size=$((final_line - $initial_line - 8))
+
+for ((j=0; j<size; j++)); do
+  echo "Submitting job for mode $j"
+  orca_pltvib *out $j > /dev/null 2>&1
+  mv *xyz coord
+  python3 reader.py
+  mkdir $j
+  cd $j
+  mkdir p m
+  mv ../positive.xyz p
+  mv ../negative.xyz m
+  cp ../orca.inp p
+  cp ../orca.inp m
+  cd p
+  perl -ne 'if ($_=~/xyz/){print "\*xyzfile -2 3 positive.xyz\n"} else{print $_}' < orca.inp > dummy; mv dummy orca.inp
+  a=$(wc -l positive.xyz | awk '{print $1}'); a=$((a + 1))
+  sed -i "1s/^/Energy =\n/" "positive.xyz"
+  sed -i "1s/^/$a\n/" "positive.xyz"
+  qsub ../../<<SUBMISSION SCRIPT>>
+  cd ../m
+  perl -ne 'if ($_=~/xyz/){print "\*xyzfile -2 3 negative.xyz\n"} else{print $_}' < orca.inp > dummy; mv dummy orca.inp
+  sed -i "1s/^/Energy =\n/" "negative.xyz"
+  sed -i "1s/^/$a\n/" "negative.xyz"
+  qsub ../../<<SUBMISSION SCRIPT>>
+  cd ../..
+  rm coord
+done
+

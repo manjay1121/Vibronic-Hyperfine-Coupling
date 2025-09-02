@@ -1,0 +1,34 @@
+!aug-cc-pVTZ-J Normalprint Nofrozencore AUTOAUX UNO EPR-II
+%maxcore 8200
+
+%pal nprocs 48 end
+
+%casscf
+ trafostep ri
+ nel 6
+ norb 6
+ mult 3
+ nroots 6
+ maxiter 1000
+ rel
+  dosoc true
+ end
+end
+
+%scf
+ MaxIter 200
+ ConvForced true
+end
+
+%basis
+NewGTO P "aug-cc-pVTZ-J" end
+NEWGTO S "aug-cc-pVTZ-J" end
+end
+
+*xyzfile -2 3 
+
+%EPRNMR
+        GTENSOR   TRUE
+        NUCLEI    = ALL H,C,N,O,P,S {AISO, ADIP, AORB, fgrad, rho}
+END
+
