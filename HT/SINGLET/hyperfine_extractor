@@ -2,20 +2,28 @@
 
 # Following normal mode propagation of the hyperfine calculations, this code will go into each subdirectory, and generate the hyperfine table to be read in by the rate code...
 
+echo "Loading in orca..."
+module load orca
+
 initial_line=$(grep -n "VIBRATIONAL FREQUENCIES" *out | cut -d: -f1)
 final_line=$(grep -n "NORMAL MODES" *out | cut -d: -f1)
 length=$((final_line - $initial_line - 8))
 
-for ((ja0; j<size; j++)); do
+echo $initial_line $final_line $length
+
+for ((j=0; j<length; j++)); do
   echo "Generating Hyperfine table for mode $j ..."
   cd $j
   cd p
   size=$(head -n 1 *ive.xyz)
   grep "Euler rotation of hyperfine tensor to g-tensor" orca.out -A $((6 + size)) | tail -n $size > hyperfine.out
   awk '{print $1, $5, $6, $7}' hyperfine.out > dummy; mv dummy hyperfine.out
+  orca_2mkl orca -molden
   cd ../m
   grep "Euler rotation of hyperfine tensor to g-tensor" orca.out -A $((6 + size)) | tail -n $size > hyperfine.out
   awk '{print $1, $5, $6, $7}' hyperfine.out > dummy; mv dummy hyperfine.out
+  orca_2mkl orca -molden
   cd ../..
 done
 
+module unload orca
