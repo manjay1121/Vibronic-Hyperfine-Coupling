@@ -157,12 +157,13 @@ h = 0.05
 ##########################################################################
 
 # Isotope definitions
-Isotope_check = true # Set to true of you have a singular isotope in your system. 
-Isotope_atomnumber = 1 # Which atom is redefined in terms of natural isotopes. Code will interpret this in terms of atom count ie the 45th atom.
-Isotope_atomspin = 5/2 # Isotopic quantum number
+Isotope_check = true # Set to true if you have a single variation from abundant isotopes in your system.
+Isotope_atomnumber = 30 # Sets which atom should have its nuclear spin changed from its default value (that of the most abundant isotope). 
+#                         Code will interpret this in terms of atom index starting from 1, i.e. the 45th atom
+Isotope_atomspin = 5/2 # The nuclear spin value of the non-abundant-isotope of interest
 
-# Global quantum numbers, apended based on abundant chemical species. Change values here ONLY for global changes. Change values above for singular
-# isotopic shifts. Add elements to table as required. 
+# Global nuclear spin quantum numbers, appended based on abundant chemical species. Change values here ONLY for global changes. Change 
+# values above for singular isotopic shifts. Add elements to table as required.
 Spin_Quantum_Numbers_Isotope = {
     "H": 0.5,
     "C": 0.0, # C-13 is 1/2
