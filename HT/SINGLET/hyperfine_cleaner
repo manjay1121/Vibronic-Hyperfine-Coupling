@@ -11,7 +11,6 @@ find . -name "orca.cpcm" -delete
 find . -name "orca.cpcm_corr" -delete
 find . -name "orca.densities" -delete
 find . -name "orca.densitiesinfo" -delete
-find . -name "orca.gbw" -delete
 find . -name "orca.property.txt" -delete
 
 echo "All done. Just checking the new size of the director..."
