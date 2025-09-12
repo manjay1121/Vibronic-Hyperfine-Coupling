@@ -1,23 +1,9 @@
-!aug-cc-pVTZ-J Normalprint Nofrozencore AUTOAUX UNO EPR-II
-%maxcore 8200
+!PBE0 aug-cc-pVTZ-J D3BJ CPCM(water) RIJCOSX Normalprint Printbasis PrintMOs AUTOAUX EPR-II
 
-%pal nprocs 48 end
+%maxcore 4000
 
-%casscf
- trafostep ri
- nel 6
- norb 6
- mult 3
- nroots 6
- maxiter 1000
- rel
-  dosoc true
- end
-end
-
-%scf
- MaxIter 200
- ConvForced true
+%pal
+nprocs 104
 end
 
 %basis
@@ -31,4 +17,3 @@ end
         GTENSOR   TRUE
         NUCLEI    = ALL H,C,N,O,P,S {AISO, ADIP, AORB, fgrad, rho}
 END
-
