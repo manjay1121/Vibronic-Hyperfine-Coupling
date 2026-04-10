@@ -14,7 +14,7 @@
 # ORCA.
 #
 # Verbose usage is as follows:
-# python3 ./Superfine.py --dE -0 --dEu 0 --dEl 0 --lst 0 --lts 0 --lu 0 --ll 0 --zp 0 -T 300 --dH 0.05 -s HT/Raw_HF_S.dat -t HT/Raw_HF_T.dat --ht --qs HT/HR_S2T.dat --qt HT/HR_T2S.dat --phase --ps HT/HFCC_s1.out --pt HT/HFCC_t1.out -p 2 --iso --index 0 --spin 0/0
+# python3 ./Superfine.py --dE -0 --dEu 0 --dEl 0 --lst 0 --lts 0 --lu 0 --ll 0 --zp 0 -T 300 --dH 0.05 -s HT/Raw_HF_S.dat -t HT/Raw_HF_T.dat --ht --qs HT/HR_S2T.dat --qt HT/HR_T2S.dat --phase --ps HT/HFCC_s1.out --pt HT/HFCC_t1.out -p 2 --iso 0:1/1 3:1/1 8:5/2
 
 ##########################################################################
 ### FRONT MATTER #########################################################
@@ -133,20 +133,135 @@ def fraction_type(x):
     except Exception:
         raise argparse.ArgumentTypeError(f"Invalid numeric expression: {x}")
 
+def isotope_type(x):
+    idx, spin = x.split(":")
+    return int(idx), fraction_type(spin)
+
 ##########################################################################
 ### QUANTUM SPIN DEFINITIONS #############################################
 ##########################################################################
 
-# Global nuclear spin quantum numbers, appended based on abundant chemical species. Change values here ONLY for global changes. Change
-# values above for singular isotopic shifts. Add elements to table as required.
+# Global nuclear spin quantum numbers of abundant chemical species.
+# Refer to --iso input for specific isotope species.
 Spin_Quantum_Numbers_Isotope = {
-    "H" : 0.5,
-    "C" : 0.0, # C-13 is 1/2
-    "N" : 1.0,
-    "O" : 0.0, # O-17 is 5/2
-    "P" : 0.5,
-    "S" : 0.0, # S-33 is 3/2
-    "Mg": 0.0
+    "H": 0.5,     # Z=1, 1H, 99.9885%, NIST
+    "He": 0.0,    # Z=2, 4He, 99.99986%, NIST
+    "Li": 1.5,    # Z=3, 7Li, 92.41%, NIST
+    "Be": 1.5,    # Z=4, 9Be, 100%, NIST
+    "B": 1.5,     # Z=5, 11B, 80.1%, NIST
+    "C": 0.0,     # Z=6, 12C, 98.93%, NIST
+    "N": 1.0,     # Z=7, 14N, 99.636%, NIST
+    "O": 0.0,     # Z=8, 16O, 99.762%, NIST
+    "F": 0.5,     # Z=9, 19F, 100%, NIST
+    "Ne": 0.0,    # Z=10, 20Ne, 90.48%, NIST
+    "Na": 1.5,    # Z=11, 23Na, 100%, NIST
+    "Mg": 0.0,    # Z=12, 24Mg, 78.99%, NIST
+    "Al": 2.5,    # Z=13, 27Al, 100%, NIST
+    "Si": 0.0,    # Z=14, 28Si, 92.23%, NIST
+    "P": 0.5,     # Z=15, 31P, 100%, NIST
+    "S": 0.0,     # Z=16, 32S, 94.99%, NIST
+    "Cl": 1.5,    # Z=17, 35Cl, 75.78%, NIST
+    "Ar": 0.0,    # Z=18, 40Ar, 99.6%, NIST
+    "K": 1.5,     # Z=19, 39K, 93.258%, NIST
+    "Ca": 0.0,    # Z=20, 40Ca, 96.941%, NIST
+    "Sc": 3.5,    # Z=21, 45Sc, 100%, NIST
+    "Ti": 0.0,    # Z=22, 48Ti, 73.72%, NIST
+    "V": 3.5,     # Z=23, 51V, 99.75%, NIST
+    "Cr": 0.0,    # Z=24, 52Cr, 83.789%, NIST
+    "Mn": 2.5,    # Z=25, 55Mn, 100%, NIST
+    "Fe": 0.0,    # Z=26, 56Fe, 91.754%, NIST
+    "Co": 3.5,    # Z=27, 59Co, 100%, NIST
+    "Ni": 0.0,    # Z=28, 58Ni, 68.077%, NIST
+    "Cu": 1.5,    # Z=29, 63Cu, 69.15%, NIST
+    "Zn": 0.0,    # Z=30, 64Zn, 48.63%, NIST
+    "Ga": 1.5,    # Z=31, 69Ga, 60.11%, NIST
+    "Ge": 0.0,    # Z=32, 74Ge, 36.5%, NIST
+    "As": 1.5,    # Z=33, 75As, 100%, NIST
+    "Se": 0.0,    # Z=34, 80Se, 49.61%, NIST
+    "Br": 1.5,    # Z=35, 79Br, 50.69%, NIST
+    "Kr": 0.0,    # Z=36, 84Kr, 56.99%, NIST
+    "Rb": 1.5,    # Z=37, 85Rb, 72.17%, NIST
+    "Sr": 0.0,    # Z=38, 88Sr, 82.58%, NIST
+    "Y": 0.5,     # Z=39, 89Y, 100%, NIST
+    "Zr": 0.0,    # Z=40, 90Zr, 51.45%, NIST
+    "Nb": 4.5,    # Z=41, 93Nb, 100%, NIST
+    "Mo": 0.0,    # Z=42, 98Mo, 24.13%, NIST
+    "Tc": 0.0,    # Z=43, (no stable isotopes; assume 99Tc I=9/2), NIST
+    "Ru": 0.0,    # Z=44, 102Ru, 31.6%, NIST
+    "Rh": 0.5,    # Z=45, 103Rh, 100%, NIST
+    "Pd": 0.0,    # Z=46, 106Pd, 27.33%, NIST
+    "Ag": 0.5,    # Z=47, 107Ag, 51.839%, NIST
+    "Cd": 0.0,    # Z=48, 114Cd, 28.73%, NIST
+    "In": 4.5,    # Z=49, 115In, 95.72%, NIST
+    "Sn": 0.0,    # Z=50, 120Sn, 32.58%, NIST
+    "Sb": 2.5,    # Z=51, 121Sb, 57.21%, NIST
+    "Te": 0.0,    # Z=52, 130Te, 34.08%, NIST
+    "I": 2.5,     # Z=53, 127I, 100%, NIST
+    "Xe": 0.0,    # Z=54, 132Xe, 26.91%, NIST
+    "Cs": 3.5,    # Z=55, 133Cs, 100%, NIST
+    "Ba": 0.0,    # Z=56, 138Ba, 71.70%, NIST
+    "La": 3.5,    # Z=57, 139La, 99.91%, NIST
+    "Ce": 0.0,    # Z=58, 140Ce, 88.48%, NIST
+    "Pr": 2.5,    # Z=59, 141Pr, 100%, NIST
+    "Nd": 0.0,    # Z=60, 142Nd, 27.13%, NIST
+    "Pm": 0.0,    # Z=61, (no stable isotopes; assume 147Pm I=7/2), NIST
+    "Sm": 0.0,    # Z=62, 152Sm, 26.75%, NIST
+    "Eu": 2.5,    # Z=63, 153Eu, 52.2%, NIST
+    "Gd": 0.0,    # Z=64, 158Gd, 24.84%, NIST
+    "Tb": 1.5,    # Z=65, 159Tb, 100%, NIST
+    "Dy": 0.0,    # Z=66, 164Dy, 28.18%, NIST
+    "Ho": 3.5,    # Z=67, 165Ho, 100%, NIST
+    "Er": 0.0,    # Z=68, 166Er, 33.503%, NIST
+    "Tm": 0.5,    # Z=69, 169Tm, 100%, NIST
+    "Yb": 0.0,    # Z=70, 174Yb, 31.83%, NIST
+    "Lu": 3.5,    # Z=71, 175Lu, 97.41%, NIST
+    "Hf": 0.0,    # Z=72, 180Hf, 35.08%, NIST
+    "Ta": 3.5,    # Z=73, 181Ta, 99.988%, NIST
+    "W": 0.0,     # Z=74, 184W, 30.64%, NIST
+    "Re": 2.5,    # Z=75, 187Re, 62.6%, NIST
+    "Os": 0.0,    # Z=76, 192Os, 40.78%, NIST
+    "Ir": 1.5,    # Z=77, 193Ir, 62.7%, NIST
+    "Pt": 0.0,    # Z=78, 195Pt, 33.773%, NIST
+    "Au": 1.5,    # Z=79, 197Au, 100%, NIST
+    "Hg": 0.0,    # Z=80, 202Hg, 29.86%, NIST
+    "Tl": 0.5,    # Z=81, 205Tl, 70.48%, NIST
+    "Pb": 0.0,    # Z=82, 208Pb, 52.4%, NIST
+    "Bi": 4.5,    # Z=83, 209Bi, 100%, NIST
+    "Po": 0.0,    # Z=84, no stable isotopes; assume 209Po I=1/2, NIST
+    "At": 0.0,    # Z=85, no stable isotopes; assume 210At I=5/2, NIST
+    "Rn": 0.0,    # Z=86, no stable isotopes; assume 222Rn I=0, NIST
+    "Fr": 1.5,    # Z=87, 223Fr (unstable), I≈3/2, NIST
+    "Ra": 0.0,    # Z=88, 226Ra dominates radiologically, I=0, NIST
+    "Ac": 1.5,    # Z=89, 227Ac, I=3/2, NIST
+    "Th": 0.0,    # Z=90, 232Th, 100%, NIST
+    "Pa": 1.5,    # Z=91, 231Pa, 100%, NIST
+    "U": 0.0,     # Z=92, 238U, 99.2745%, NIST
+    "Np": 0.0,    # Z=93, 237Np (synthetic), I=5/2, NIST
+    "Pu": 0.0,    # Z=94, 239Pu (synthetic), I=1/2, NIST
+    "Am": 2.5,    # Z=95, 241Am, I=5/2, NIST
+    "Cm": 0.0,    # Z=96, 244Cm, I=0, NIST
+    "Bk": 3.0,    # Z=97, 249Bk, I=3, NIST
+    "Cf": 0.5,    # Z=98, 249Cf, I=1/2, NIST
+    "Es": 2.5,    # Z=99, 252Es, I=5/2, NIST
+    "Fm": 0.0,    # Z=100, 257Fm, I=1/2, NIST
+    "Md": 2.5,    # Z=101, 258Md, I=5/2, NIST
+    "No": 0.0,    # Z=102, 259No, I=0, NIST
+    "Lr": 3.5,    # Z=103, 262Lr, I=7/2, NIST
+    "Rf": 0.0,    # Z=104, assumed 267Rf, I=0, theory
+    "Db": 0.0,    # Z=105, assumed 268Db, I=0
+    "Sg": 0.0,    # Z=106, assumed 271Sg, I=0
+    "Bh": 0.0,    # Z=107, assumed 270Bh, I=0
+    "Hs": 0.0,    # Z=108, assumed 277Hs, I=0
+    "Mt": 0.0,    # Z=109, assumed 276Mt, I=0
+    "Ds": 0.0,    # Z=110, assumed 281Ds, I=0
+    "Rg": 0.0,    # Z=111, assumed 280Rg, I=0
+    "Cn": 0.0,    # Z=112, assumed 285Cn, I=0
+    "Nh": 0.0,    # Z=113, assumed 284Nh, I=0
+    "Fl": 0.0,    # Z=114, assumed 289Fl, I=0
+    "Mc": 0.0,    # Z=115, assumed 288Mc, I=0
+    "Lv": 0.0,    # Z=116, assumed 293Lv, I=0
+    "Ts": 0.0,    # Z=117, assumed 294Ts, I=0
+    "Og": 0.0,    # Z=118, assumed 294Og, I=0
 }
 
 ##########################################################################
@@ -204,26 +319,16 @@ parser.add_argument(
 )
 parser.add_argument(
     '--iso',
-    action='store_true',
-    help='Flag to tell program whether an atomic isotope should be calculated.'
-)
-parser.add_argument(
-    '--index',
-    type=int,
-    default=1,
-    help='Sets which atom index is an isotope; starts from 1, and is based on the hyperfine indexing (NOT molecular indexing)!'
-)
-parser.add_argument(
-    '--spin',
-    type=fraction_type,
-    default=0,
-    help='The nuclear spin value of the isotope of interest.'
+    type=isotope_type,
+    nargs='*',     # zero or more
+    default=[],
+    help='Flag to tell program whether an atomic isotope should be calculated. Should be given in the format of [index:spin]. The index should be given based on hyperfine indexing, NOT molecular indexing!'
 )
 parser.add_argument(
     '--zp',
     type=float,
     default=0,
-    help='Zeeman pulling displacement NB. typically only required for large magnetic field effects. '
+    help='Zeeman pulling (second-order admixing of eigenstates) displacement to dE. A measure of the change to the change in dE due to magnetic relativistic effects. NB. typically only required for large magnetic field effects. Can also be directly incorporated into dE. '
 )
 parser.add_argument(
     '--dEu',
@@ -289,8 +394,6 @@ PHASER = args.phase
 Orbitals_singlet_file_path = args.ps
 Orbitals_triplet_file_path = args.pt
 Isotope_check = args.iso
-Isotope_atomnumber = args.index
-Isotope_atomspin = args.spin
 Zeeman_Pulling = args.zp
 dE_upper_correction = args.dEu
 dE_lower_correction = args.dEl
@@ -338,8 +441,10 @@ if HT:
 print()
 
 if Isotope_check:
-    print("An isotope calculation was requested...")
-    print(f"Atom {Isotope_atomnumber} was amended to employ a spin of {Isotope_atomspin}. Make sure to check these numbers!")
+    print("Isotope calculation(s) were requested...")
+    for idx, spin in Isotope_check:
+        print(f"Atom {idx} was amended to employ a spin of {spin}.")
+    print("Make sure to check for errors with Print level 2!")
     print()
 
 ##########################################################################
@@ -381,8 +486,8 @@ try: # Formatting the singlet Hyperfine table for code
     df_s["Spin Quantum Number"] = df_s["Species"].map(Spin_Quantum_Numbers_Isotope)
     species_list = df_s["Species"].unique().tolist()
 
-    if Isotope_check:
-        df_s.loc[Isotope_atomnumber - 1, "Spin Quantum Number"] = Isotope_atomspin
+    for idx, spin in Isotope_check:
+        df_s.loc[idx - 1, "Spin Quantum Number"] = spin
 
     # Print the full table depending on the requested print level
     if PRINT == 2:
@@ -411,8 +516,8 @@ try: # Formatting the triplet Hyperfine table for code
     df_t["Spin Quantum Number"] = df_t["Species"].map(Spin_Quantum_Numbers_Isotope)
     species_list = df_t["Species"].unique().tolist()
 
-    if Isotope_check:
-        df_t.loc[Isotope_atomnumber - 1, "Spin Quantum Number"] = Isotope_atomspin
+    for idx, spin in Isotope_check:
+        df_t.loc[idx - 1, "Spin Quantum Number"] = spin
 
     # Print the full table depending on the requested print level
     if PRINT == 2:
@@ -573,9 +678,9 @@ if HT:
             print(f"An error occurred: {e}")
 
         # Define spins for requested isotope
-        if Isotope_check:
-            df_positive.loc[Isotope_atomnumber - 1, "Spin Quantum Number"] = Isotope_atomspin
-            df_negative.loc[Isotope_atomnumber - 1, "Spin Quantum Number"] = Isotope_atomspin
+        for idx, spin in Isotope_check:
+            df_positive.loc[idx - 1, "Spin Quantum Number"] = spin
+            df_negative.loc[idx - 1, "Spin Quantum Number"] = spin
 
         # Reset important variables
         mode_coupling_positive = 0
@@ -692,15 +797,15 @@ if HT:
             print(f"An error occurred: {e}")
 
         # Define spins for requested isotope
-        if Isotope_check:
-            df_positive.loc[Isotope_atomnumber - 1, "Spin Quantum Number"] = Isotope_atomspin
-            df_negative.loc[Isotope_atomnumber - 1, "Spin Quantum Number"] = Isotope_atomspin
+        for idx, spin in Isotope_check:
+            df_positive.loc[idx - 1, "Spin Quantum Number"] = spin
+            df_negative.loc[idx - 1, "Spin Quantum Number"] = spin
 
         # Reset important variables
         mode_coupling_positive = 0
         mode_coupling_negative = 0
 
-        for _, row in df_positive.iterrows(): #Calculating the Hyperfine coupling for the singlet state
+        for _, row in df_positive.iterrows(): #Calculating the Hyperfine coupling for the triplet state
             atom = row['Species']
             A_x = row['HF_C x']
             A_y = row['HF_C y']
@@ -899,9 +1004,14 @@ if HT:
 ##########################################################################
 
 # Adiabatic Energy definitions
-dE_S2T_upper = (dE + Zeeman_Pulling) + dE_upper_correction
-dE_S2T_middle = (dE + Zeeman_Pulling)
-dE_S2T_lower = (dE + Zeeman_Pulling) - dE_lower_correction
+if dE > 0:
+    dE_S2T_upper = (dE + Zeeman_Pulling) + dE_upper_correction
+    dE_S2T_middle = (dE + Zeeman_Pulling)
+    dE_S2T_lower = (dE + Zeeman_Pulling) - dE_lower_correction
+else:
+    dE_S2T_upper = (dE - Zeeman_Pulling) - dE_upper_correction
+    dE_S2T_middle = (dE - Zeeman_Pulling)
+    dE_S2T_lower = (dE - Zeeman_Pulling) + dE_lower_correction
 dE_T2S_upper = -dE_S2T_upper
 dE_T2S_middle = -dE_S2T_middle
 dE_T2S_lower = -dE_S2T_lower
@@ -960,6 +1070,7 @@ print("*" * 64)
 print(f"Energy gap S-T                                 {dE} (eV)")
 print(f"Energy gap (upper correction)                  {dE_upper_correction} (eV)")
 print(f"Energy gap (lower correction)                  {dE_lower_correction} (eV)")
+print(f"Zeeman Pulling                                 {Zeeman_Pulling} (eV))")
 print()
 print(f"Lambda_S-T                                     {E_lambda_s} (eV)")
 print(f"Lambda_T-S                                     {E_lambda_t} (eV)")
@@ -1036,50 +1147,50 @@ if dE_S2T_upper > 0:
     rate_HF_L_S2T_upper = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_L_S2T_upper
     rate_HF_V_S2T_upper = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_V_S2T_upper
 else:
-    rate_HF_G_S2T_upper = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_G_S2T_upper * np.exp((dE_S2T_upper) / (k_B * T))
-    rate_HF_L_S2T_upper = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_L_S2T_upper * np.exp((dE_S2T_upper) / (k_B * T))
-    rate_HF_V_S2T_upper = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_V_S2T_upper * np.exp((dE_S2T_upper) / (k_B * T))
+    rate_HF_G_S2T_upper = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_G_S2T_upper * np.exp((dE_S2T_upper) / (k_B * T))
+    rate_HF_L_S2T_upper = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_L_S2T_upper * np.exp((dE_S2T_upper) / (k_B * T))
+    rate_HF_V_S2T_upper = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_V_S2T_upper * np.exp((dE_S2T_upper) / (k_B * T))
 
 if dE_S2T_middle > 0:
     rate_HF_G_S2T_middle = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_G_S2T_middle
     rate_HF_L_S2T_middle = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_L_S2T_middle
     rate_HF_V_S2T_middle = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_V_S2T_middle
 else:
-    rate_HF_G_S2T_middle = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_G_S2T_middle * np.exp((dE_S2T_middle) / (k_B * T))
-    rate_HF_L_S2T_middle = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_L_S2T_middle * np.exp((dE_S2T_middle) / (k_B * T))
-    rate_HF_V_S2T_middle = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_V_S2T_middle * np.exp((dE_S2T_middle) / (k_B * T))
+    rate_HF_G_S2T_middle = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_G_S2T_middle * np.exp((dE_S2T_middle) / (k_B * T))
+    rate_HF_L_S2T_middle = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_L_S2T_middle * np.exp((dE_S2T_middle) / (k_B * T))
+    rate_HF_V_S2T_middle = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_V_S2T_middle * np.exp((dE_S2T_middle) / (k_B * T))
 
 if dE_S2T_lower > 0:
     rate_HF_G_S2T_lower = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_G_S2T_lower
     rate_HF_L_S2T_lower = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_L_S2T_lower
     rate_HF_V_S2T_lower = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_V_S2T_lower
 else:
-    rate_HF_G_S2T_lower = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_G_S2T_lower * np.exp((dE_S2T_lower) / (k_B * T))
-    rate_HF_L_S2T_lower = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_L_S2T_lower * np.exp((dE_S2T_lower) / (k_B * T))
-    rate_HF_V_S2T_lower = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_V_S2T_lower * np.exp((dE_S2T_lower) / (k_B * T))
+    rate_HF_G_S2T_lower = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_G_S2T_lower * np.exp((dE_S2T_lower) / (k_B * T))
+    rate_HF_L_S2T_lower = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_L_S2T_lower * np.exp((dE_S2T_lower) / (k_B * T))
+    rate_HF_V_S2T_lower = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_V_S2T_lower * np.exp((dE_S2T_lower) / (k_B * T))
 
 if dE_T2S_upper > 0:
-    rate_HF_G_T2S_upper = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_G_T2S_upper
-    rate_HF_L_T2S_upper = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_L_T2S_upper
-    rate_HF_V_T2S_upper = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_V_T2S_upper
+    rate_HF_G_T2S_upper = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_G_T2S_upper
+    rate_HF_L_T2S_upper = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_L_T2S_upper
+    rate_HF_V_T2S_upper = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_V_T2S_upper
 else:
     rate_HF_G_T2S_upper = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_G_T2S_upper * np.exp((dE_T2S_upper) / (k_B * T))
     rate_HF_L_T2S_upper = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_L_T2S_upper * np.exp((dE_T2S_upper) / (k_B * T))
     rate_HF_V_T2S_upper = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_V_T2S_upper * np.exp((dE_T2S_upper) / (k_B * T))
 
 if dE_T2S_middle > 0:
-    rate_HF_G_T2S_middle = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_G_T2S_middle
-    rate_HF_L_T2S_middle = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_L_T2S_middle
-    rate_HF_V_T2S_middle = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_V_T2S_middle
+    rate_HF_G_T2S_middle = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_G_T2S_middle
+    rate_HF_L_T2S_middle = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_L_T2S_middle
+    rate_HF_V_T2S_middle = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_V_T2S_middle
 else:
     rate_HF_G_T2S_middle = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_G_T2S_middle * np.exp((dE_T2S_middle) / (k_B * T))
     rate_HF_L_T2S_middle = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_L_T2S_middle * np.exp((dE_T2S_middle) / (k_B * T))
     rate_HF_V_T2S_middle = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_V_T2S_middle * np.exp((dE_T2S_middle) / (k_B * T))
 
 if dE_T2S_lower > 0:
-    rate_HF_G_T2S_lower = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_G_T2S_lower
-    rate_HF_L_T2S_lower = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_L_T2S_lower
-    rate_HF_V_T2S_lower = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_singlet)**2 * FCWD_V_T2S_lower
+    rate_HF_G_T2S_lower = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_G_T2S_lower
+    rate_HF_L_T2S_lower = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_L_T2S_lower
+    rate_HF_V_T2S_lower = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_V_T2S_lower
 else:
     rate_HF_G_T2S_lower = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_G_T2S_lower * np.exp((dE_T2S_lower) / (k_B * T))
     rate_HF_L_T2S_lower = 2 * np.pi / hbar_inev * (RMS_Hyperfine_Coupling_triplet)**2 * FCWD_L_T2S_lower * np.exp((dE_T2S_lower) / (k_B * T))
@@ -1087,8 +1198,8 @@ else:
 
 rate_HF_G_S2T = (rate_HF_G_S2T_lower + (rate_HF_G_S2T_middle*ThermalCorrection1_2) + (rate_HF_G_S2T_upper*ThermalCorrection1_3)) / (1 + ThermalCorrection1_2 + ThermalCorrection1_3)
 rate_HF_G_T2S = (rate_HF_G_T2S_lower + (rate_HF_G_T2S_middle*ThermalCorrection1_2) + (rate_HF_G_T2S_upper*ThermalCorrection1_3)) / (1 + ThermalCorrection1_2 + ThermalCorrection1_3)
-rate_HF_L_S2T = (rate_HF_L_S2T_lower + (rate_HF_L_S2T_middle*ThermalCorrection1_2) + (rate_HF_L_S2T_upper*ThermalCorrection1_2)) / (1 + ThermalCorrection1_2 + ThermalCorrection1_3)
-rate_HF_L_T2S = (rate_HF_L_T2S_lower + (rate_HF_L_T2S_middle*ThermalCorrection1_2) + (rate_HF_L_T2S_upper*ThermalCorrection1_2)) / (1 + ThermalCorrection1_2 + ThermalCorrection1_3)
+rate_HF_L_S2T = (rate_HF_L_S2T_lower + (rate_HF_L_S2T_middle*ThermalCorrection1_2) + (rate_HF_L_S2T_upper*ThermalCorrection1_3)) / (1 + ThermalCorrection1_2 + ThermalCorrection1_3)
+rate_HF_L_T2S = (rate_HF_L_T2S_lower + (rate_HF_L_T2S_middle*ThermalCorrection1_2) + (rate_HF_L_T2S_upper*ThermalCorrection1_3)) / (1 + ThermalCorrection1_2 + ThermalCorrection1_3)
 rate_HF_V_S2T = (rate_HF_V_S2T_lower + (rate_HF_V_S2T_middle*ThermalCorrection1_2) + (rate_HF_V_S2T_upper*ThermalCorrection1_3)) / (1 + ThermalCorrection1_2 + ThermalCorrection1_3)
 rate_HF_V_T2S = (rate_HF_V_T2S_lower + (rate_HF_V_T2S_middle*ThermalCorrection1_2) + (rate_HF_V_T2S_upper*ThermalCorrection1_3)) / (1 + ThermalCorrection1_2 + ThermalCorrection1_3)
 
@@ -1126,31 +1237,31 @@ if HT:
         HTrate_HF_V_S2T_lower = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_V_S2T_lower * np.exp((dE_S2T_lower) / (k_B * T))
 
     if dE_T2S_upper > 0:
-        HTrate_HF_G_T2S_upper = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_G_T2S_upper
-        HTrate_HF_L_T2S_upper = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_L_T2S_upper
-        HTrate_HF_V_T2S_upper = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_V_T2S_upper
+        HTrate_HF_G_T2S_upper = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_G_T2S_upper
+        HTrate_HF_L_T2S_upper = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_L_T2S_upper
+        HTrate_HF_V_T2S_upper = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_V_T2S_upper
     else:
-        HTrate_HF_G_T2S_upper = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_G_T2S_upper * np.exp((dE_T2S_upper) / (k_B * T))
-        HTrate_HF_L_T2S_upper = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_L_T2S_upper * np.exp((dE_T2S_upper) / (k_B * T))
-        HTrate_HF_V_T2S_upper = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_V_T2S_upper * np.exp((dE_T2S_upper) / (k_B * T))
+        HTrate_HF_G_T2S_upper = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_G_T2S_upper * np.exp((dE_T2S_upper) / (k_B * T))
+        HTrate_HF_L_T2S_upper = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_L_T2S_upper * np.exp((dE_T2S_upper) / (k_B * T))
+        HTrate_HF_V_T2S_upper = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_V_T2S_upper * np.exp((dE_T2S_upper) / (k_B * T))
 
     if dE_T2S_middle > 0:
-        HTrate_HF_G_T2S_middle = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_G_T2S_middle
-        HTrate_HF_L_T2S_middle = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_L_T2S_middle
-        HTrate_HF_V_T2S_middle = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_V_T2S_middle
+        HTrate_HF_G_T2S_middle = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_G_T2S_middle
+        HTrate_HF_L_T2S_middle = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_L_T2S_middle
+        HTrate_HF_V_T2S_middle = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_V_T2S_middle
     else:
-        HTrate_HF_G_T2S_middle = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_G_T2S_middle * np.exp((dE_T2S_middle) / (k_B * T))
-        HTrate_HF_L_T2S_middle = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_L_T2S_middle * np.exp((dE_T2S_middle) / (k_B * T))
-        HTrate_HF_V_T2S_middle = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_V_T2S_middle * np.exp((dE_T2S_middle) / (k_B * T))
+        HTrate_HF_G_T2S_middle = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_G_T2S_middle * np.exp((dE_T2S_middle) / (k_B * T))
+        HTrate_HF_L_T2S_middle = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_L_T2S_middle * np.exp((dE_T2S_middle) / (k_B * T))
+        HTrate_HF_V_T2S_middle = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_V_T2S_middle * np.exp((dE_T2S_middle) / (k_B * T))
 
     if dE_T2S_lower > 0:
-        HTrate_HF_G_T2S_lower = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_G_T2S_lower
-        HTrate_HF_L_T2S_lower = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_L_T2S_lower
-        HTrate_HF_V_T2S_lower = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_V_T2S_lower
+        HTrate_HF_G_T2S_lower = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_G_T2S_lower
+        HTrate_HF_L_T2S_lower = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_L_T2S_lower
+        HTrate_HF_V_T2S_lower = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_V_T2S_lower
     else:
-        HTrate_HF_G_T2S_lower = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_G_T2S_lower * np.exp((dE_T2S_lower) / (k_B * T))
-        HTrate_HF_L_T2S_lower = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_L_T2S_lower * np.exp((dE_T2S_lower) / (k_B * T))
-        HTrate_HF_V_T2S_lower = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_SINGLET * FCWD_V_T2S_lower * np.exp((dE_T2S_lower) / (k_B * T))
+        HTrate_HF_G_T2S_lower = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_G_T2S_lower * np.exp((dE_T2S_lower) / (k_B * T))
+        HTrate_HF_L_T2S_lower = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_L_T2S_lower * np.exp((dE_T2S_lower) / (k_B * T))
+        HTrate_HF_V_T2S_lower = 2 * np.pi / hbar_inev * HT_COUPLING_SQUARED_TRIPLET * FCWD_V_T2S_lower * np.exp((dE_T2S_lower) / (k_B * T))
 
     HTrate_HF_G_S2T = (HTrate_HF_G_S2T_lower + (HTrate_HF_G_S2T_middle*ThermalCorrection1_2) + (HTrate_HF_G_S2T_upper*ThermalCorrection1_3)) / (1+ThermalCorrection1_2+ThermalCorrection1_3)
     HTrate_HF_G_T2S = (HTrate_HF_G_T2S_lower + (HTrate_HF_G_T2S_middle*ThermalCorrection1_2) + (HTrate_HF_G_T2S_upper*ThermalCorrection1_3)) / (1+ThermalCorrection1_2+ThermalCorrection1_3)
