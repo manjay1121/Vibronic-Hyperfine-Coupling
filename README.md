@@ -1,4 +1,5 @@
 UPDATE: This work is now published [https://doi.org/10.1063/5.0326602]
+
 This program calculates the rate of hyperfine-mediated intersystem crossing for a given system. At a minimum, this program requires hyperfine coupling constants evaluated at the Franck-Condon point. The code is written to interpret formatting exported by ORCA, however this can easily be reconfigured. For Herzberg-Teller calculations, files containing the nuclear displacements (Q) and the derivatives of the hyperfine coupling constants with respect to those Q are required. Additionally, one should employ normal mode phase tracking as discussed in the publication.
 
 Note: phase tracking is very expensive and may require submission to a queue rather than being executed on a local machine. For generation of files, see supplementary scripts. This program was originally built for compatibility with ORCA and the MOLDEN output for orbitals. Orca can convert .gwb files to .molden files. Thankfully this is a prolific format.
